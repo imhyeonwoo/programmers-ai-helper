@@ -21,9 +21,6 @@
   "action": {
     "default_title": "Programmers AI Helper 열기"
   },
-  "side_panel": {
-    "default_path": "sidepanel.html"
-  },
   "content_scripts": [
     {
       "matches": [

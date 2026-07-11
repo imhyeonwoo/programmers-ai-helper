@@ -104,6 +104,12 @@ h2 {
   margin: 0;
 }
 
+.preview-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .diagnostic-grid {
   display: grid;
   grid-template-columns: 86px minmax(0, 1fr);

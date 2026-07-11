@@ -7,11 +7,11 @@ const {
   UNSUPPORTED_MESSAGE,
   DEFAULT_CHATGPT_URL,
   analyzePageSupport,
-  backupStorageKey,
-  isSchoolUrl
+  backupStorageKey
 } = globalThis.ProgrammersAiUtils;
 
 const MAX_BACKUPS_PER_URL = 5;
+const ACTIVE_PANEL_TAB_KEY = "programmersAiHelper:activePanelTabId";
 
 class BackgroundError extends Error {
   constructor(message, details = "") {
@@ -33,52 +33,64 @@ function failure(error) {
   };
 }
 
-async function configureSidePanel(tabId, rawUrl) {
-  if (!Number.isInteger(tabId)) {
-    return;
-  }
-  await chrome.sidePanel.setOptions({
-    tabId,
-    path: "sidepanel.html",
-    enabled: isSchoolUrl(rawUrl)
-  });
-}
-
-async function initializeSidePanel() {
-  await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+async function disableAllTabPanels() {
   const tabs = await chrome.tabs.query({});
   await Promise.all(
     tabs.map((tab) =>
-      configureSidePanel(tab.id, tab.url).catch((error) => {
-        console.error(`탭 ${tab.id} 사이드 패널 초기화 실패:`, error);
+      chrome.sidePanel.setOptions({ tabId: tab.id, enabled: false }).catch((error) => {
+        console.error(`탭 ${tab.id} 사이드 패널 비활성화 실패:`, error);
       })
     )
   );
+  await chrome.storage.session.remove(ACTIVE_PANEL_TAB_KEY);
 }
 
 chrome.runtime.onInstalled.addListener(() => {
-  initializeSidePanel().catch((error) => console.error("사이드 패널 초기화 실패:", error));
+  disableAllTabPanels().catch((error) => console.error("사이드 패널 초기화 실패:", error));
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  initializeSidePanel().catch((error) => console.error("사이드 패널 초기화 실패:", error));
+  disableAllTabPanels().catch((error) => console.error("사이드 패널 초기화 실패:", error));
 });
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.status !== "loading" && !changeInfo.url) {
+chrome.action.onClicked.addListener((tab) => {
+  if (!Number.isInteger(tab.id)) {
     return;
   }
-  configureSidePanel(tabId, changeInfo.url || tab.url).catch((error) => {
-    console.error("탭별 사이드 패널 설정 실패:", error);
+
+  const previousTabPromise = chrome.storage.session.get(ACTIVE_PANEL_TAB_KEY);
+  const configurePromise = chrome.sidePanel.setOptions({
+    tabId: tab.id,
+    path: "sidepanel.html",
+    enabled: true
   });
+
+  // open()은 사용자 클릭의 동기 호출 구간에서 시작해야 합니다.
+  const openPromise = chrome.sidePanel.open({ tabId: tab.id });
+
+  Promise.all([previousTabPromise, configurePromise, openPromise])
+    .then(async ([previous]) => {
+      const previousTabId = previous[ACTIVE_PANEL_TAB_KEY];
+      if (Number.isInteger(previousTabId) && previousTabId !== tab.id) {
+        await chrome.sidePanel
+          .setOptions({ tabId: previousTabId, enabled: false })
+          .catch(() => undefined);
+      }
+      await chrome.storage.session.set({ [ACTIVE_PANEL_TAB_KEY]: tab.id });
+    })
+    .catch((error) => {
+      console.error("탭 전용 사이드 패널 열기 실패:", error);
+    });
 });
 
-chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+chrome.tabs.onRemoved.addListener(async (tabId) => {
   try {
-    const tab = await chrome.tabs.get(tabId);
-    await configureSidePanel(tabId, tab.url);
+    const stored = await chrome.storage.session.get(ACTIVE_PANEL_TAB_KEY);
+    if (stored[ACTIVE_PANEL_TAB_KEY] === tabId) {
+      await chrome.storage.session.remove(ACTIVE_PANEL_TAB_KEY);
+    }
   } catch (error) {
-    console.error("활성 탭 사이드 패널 설정 실패:", error);
+    console.error("사이드 패널 탭 상태 정리 실패:", error);
   }
 });
 

@@ -21,6 +21,7 @@ const ui = {
   promptButtons: [...document.querySelectorAll(".prompt-button")],
   preview: document.querySelector("#prompt-preview"),
   previewCount: document.querySelector("#preview-count"),
+  clearPreview: document.querySelector("#clear-preview-button"),
   copyPrompt: document.querySelector("#copy-prompt-button"),
   openChatGpt: document.querySelector("#open-chatgpt-button"),
   insertCode: document.querySelector("#insert-code-button"),
@@ -81,6 +82,7 @@ function setBusy(nextBusy) {
   for (const button of [
     ui.refresh,
     ...ui.promptButtons,
+    ui.clearPreview,
     ui.copyPrompt,
     ui.openChatGpt,
     ui.insertCode,
@@ -476,6 +478,13 @@ for (const button of ui.promptButtons) {
 ui.preview.addEventListener("input", () => {
   ui.previewCount.textContent = `${ui.preview.value.length.toLocaleString("ko-KR")}자`;
   ui.copyPrompt.disabled = busy || !ui.preview.value.trim();
+});
+
+ui.clearPreview.addEventListener("click", () => {
+  ui.preview.value = "";
+  ui.previewCount.textContent = "0자";
+  ui.copyPrompt.disabled = true;
+  setStatus("프롬프트 미리보기를 초기화했습니다.", "success");
 });
 
 ui.copyPrompt.addEventListener("click", () => {
