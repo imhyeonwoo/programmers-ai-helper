@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "Programmers AI Helper",
+  "version": "1.0.0",
+  "description": "프로그래머스 일반 연습문제와 ChatGPT 웹을 안전한 수동 클립보드 흐름으로 연결합니다.",
+  "minimum_chrome_version": "116",
+  "permissions": [
+    "sidePanel",
+    "storage",
+    "tabs",
+    "scripting",
+    "clipboardRead",
+    "clipboardWrite"
+  ],
+  "host_permissions": [
+    "https://school.programmers.co.kr/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Programmers AI Helper 열기"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://school.programmers.co.kr/*"
+      ],
+      "js": [
+        "selectors.js",
+        "utils.js",
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

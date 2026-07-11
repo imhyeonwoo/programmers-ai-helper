@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Programmers AI Helper</title>
+    <link rel="stylesheet" href="sidepanel.css">
+  </head>
+  <body>
+    <header class="app-header">
+      <p class="eyebrow">PERSONAL CLIPBOARD WORKFLOW</p>
+      <h1>Programmers AI Helper</h1>
+      <p>API·서버·자동 제출 없이 연습문제와 ChatGPT 웹을 연결합니다.</p>
+    </header>
+
+    <main>
+      <section class="card" aria-labelledby="state-title">
+        <div class="section-heading">
+          <h2 id="state-title">현재 상태</h2>
+          <button id="refresh-button" class="text-button" type="button">현재 정보 새로고침</button>
+        </div>
+        <dl class="diagnostic-grid">
+          <dt>페이지</dt><dd id="support-value">확인 중</dd>
+          <dt>언어</dt><dd id="language-value">-</dd>
+          <dt>문제 제목</dt><dd id="title-value">-</dd>
+          <dt>문제 길이</dt><dd id="problem-length-value">-</dd>
+          <dt>코드 길이</dt><dd id="code-length-value">-</dd>
+          <dt>CodeMirror</dt><dd id="codemirror-value">-</dd>
+          <dt>실행 오류</dt><dd id="execution-error-value">-</dd>
+          <dt>실행 버튼</dt><dd id="run-button-value">-</dd>
+          <dt>제출 버튼</dt><dd id="submit-button-value">-</dd>
+        </dl>
+        <div id="status-message" class="status" role="status" aria-live="polite"></div>
+      </section>
+
+      <section class="card" aria-labelledby="prompt-actions-title">
+        <h2 id="prompt-actions-title">프롬프트 생성</h2>
+        <div class="button-grid">
+          <button class="primary-button prompt-button" data-prompt-type="explain" type="button">문제 쉽게 설명</button>
+          <button class="primary-button prompt-button" data-prompt-type="review" type="button">내 코드 검토</button>
+          <button class="primary-button prompt-button" data-prompt-type="solution" type="button">전체 풀이 요청</button>
+          <button class="primary-button prompt-button" data-prompt-type="complexity" type="button">시간복잡도 평가</button>
+          <button class="primary-button prompt-button wide" data-prompt-type="error" type="button">실행 오류 분석</button>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="preview-title">
+        <div class="section-heading">
+          <h2 id="preview-title">프롬프트 미리보기</h2>
+          <span id="preview-count" class="count">0자</span>
+        </div>
+        <textarea
+          id="prompt-preview"
+          rows="15"
+          spellcheck="false"
+          placeholder="요청 버튼을 누른 뒤 내용을 직접 수정하고 복사할 수 있습니다."
+        ></textarea>
+        <div class="stacked-actions">
+          <button id="copy-prompt-button" class="secondary-button" type="button" disabled>
+            생성된 프롬프트 복사
+          </button>
+          <button id="open-chatgpt-button" class="chatgpt-button" type="button">ChatGPT 열기</button>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="editor-title">
+        <h2 id="editor-title">CodeMirror 코드 가져오기</h2>
+        <p class="help-text">
+          ChatGPT 코드 블록의 복사 버튼을 누른 뒤 삽입하세요. 삽입값은 다시 읽어 검증합니다.
+        </p>
+        <div class="stacked-actions">
+          <button id="insert-code-button" class="accent-button" type="button">클립보드 코드 삽입</button>
+          <button id="restore-code-button" class="secondary-button" type="button">이전 코드 복원</button>
+        </div>
+        <p id="backup-info" class="backup-info">현재 URL의 백업 정보를 확인하는 중...</p>
+        <p class="safety-note">실행 및 제출 버튼은 탐지만 하며 절대 자동 클릭하지 않습니다.</p>
+      </section>
+
+      <section class="card" aria-labelledby="debug-title">
+        <h2 id="debug-title">문제 해결</h2>
+        <button id="copy-debug-button" class="secondary-button full-button" type="button">디버그 정보 복사</button>
+        <p class="help-text">문제 본문과 코드 원문은 제외하고 selector 탐지 여부와 길이만 복사합니다.</p>
+      </section>
+    </main>
+
+    <script src="utils.js"></script>
+    <script src="sidepanel.js"></script>
+  </body>
+</html>
