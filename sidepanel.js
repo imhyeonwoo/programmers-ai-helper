@@ -19,6 +19,8 @@ const ui = {
   status: document.querySelector("#status-message"),
   refresh: document.querySelector("#refresh-button"),
   promptButtons: [...document.querySelectorAll(".prompt-button")],
+  feedbackOptions: [...document.querySelectorAll(".feedback-option")],
+  generateFeedback: document.querySelector("#generate-feedback-button"),
   preview: document.querySelector("#prompt-preview"),
   previewCount: document.querySelector("#preview-count"),
   clearPreview: document.querySelector("#clear-preview-button"),
@@ -68,6 +70,14 @@ function updateActionAvailability() {
       ? "실행 결과에서 오류 또는 실패가 탐지된 경우에만 사용할 수 있습니다."
       : "";
   }
+  for (const option of ui.feedbackOptions) {
+    option.disabled = busy || !featureEnabled;
+  }
+  const hasFeedbackSelection = ui.feedbackOptions.some((option) => option.checked);
+  ui.generateFeedback.disabled = busy || !featureEnabled || !hasFeedbackSelection;
+  ui.generateFeedback.title = !hasFeedbackSelection
+    ? "내 코드 검토 또는 내 코드 평가를 하나 이상 선택해 주세요."
+    : "";
   ui.insertCode.disabled = busy || !featureEnabled;
   ui.restoreCode.disabled = busy || !featureEnabled;
 }
@@ -82,6 +92,8 @@ function setBusy(nextBusy) {
   for (const button of [
     ui.refresh,
     ...ui.promptButtons,
+    ...ui.feedbackOptions,
+    ui.generateFeedback,
     ui.clearPreview,
     ui.copyPrompt,
     ui.openChatGpt,
@@ -279,6 +291,19 @@ const PROMPT_INSTRUCTIONS = Object.freeze({
     "수정이 필요한 줄과 이유를 구체적으로 알려 주세요.",
     "바로 전체 정답으로 대체하지 말고 수정 방향을 설명한 뒤, 마지막에 개선 코드를 제공해 주세요."
   ],
+  evaluate: [
+    "다른 풀이로 대체하기 전에 현재 코드가 문제의 요구사항을 만족하는 정답인지 오답인지 먼저 판정하고, 그 근거를 설명해 주세요.",
+    "정답 코드라면 '오류 없음'을 명확히 표시하고 억지로 오류를 만들지 마세요. 단순한 취향 차이도 오류처럼 표현하지 마세요.",
+    "발견한 문제는 문법 오류, 실행 오류, 논리 오류로 구분하고, 코드에서 잘한 점도 함께 설명해 주세요.",
+    "정확성, 가독성, 효율성, Python다운 표현을 각각 평가해 주세요.",
+    "반드시 고쳐야 하는 필수 수정 사항과 동작에는 문제가 없지만 더 나아질 수 있는 선택적 개선 사항을 구분해 주세요.",
+    "현재 코드의 시간복잡도와 공간복잡도를 분석하고, 문제의 제한사항에서 성능이 충분한지 판단해 주세요.",
+    "놓치기 쉬운 예외 상황과 엣지 케이스를 확인해 주세요.",
+    "불필요한 자료형 변환, 중간 변수, 반복 연산이 있는지 확인하고, 변수명과 코드 구조의 가독성을 평가해 주세요.",
+    "사용자의 기존 풀이 방식을 최대한 유지해 주세요. 코드가 이미 충분히 좋다면 과도하게 수정하거나 바로 다른 풀이로 바꾸지 마세요.",
+    "개선 코드가 필요하다면 개선 전 원본 코드와 무엇이 달라졌는지, 각 차이가 왜 필요한지 설명해 주세요. 개선이 필요 없다면 원본 유지가 적절하다고 명시해 주세요.",
+    "마지막에는 이 코드에서 공부할 수 있는 Python 개념을 현재 코드와 연결해 정리해 주세요."
+  ],
   "debug-progress": [
     "이 코드는 완성된 답안이 아니라 사용자가 디버깅하며 생각을 정리하고 있는 중간 작업물입니다. 정답 여부나 통과 여부부터 판정하지 마세요.",
     "코드 주석과 TODO는 사고 기록이나 검증 중인 가설이므로 실행 코드나 사용자가 확정한 주장처럼 취급하지 마세요. 임시 출력과 미완성 분기는 최종 설계가 아니라 관찰을 위한 도구로 봐 주세요.",
@@ -306,19 +331,30 @@ const PROMPT_INSTRUCTIONS = Object.freeze({
   ]
 });
 
-function buildPrompt(type, data) {
-  const instruction = PROMPT_INSTRUCTIONS[type];
-  if (!instruction) {
+function buildPrompt(typeOrTypes, data) {
+  const types = Array.isArray(typeOrTypes) ? typeOrTypes : [typeOrTypes];
+  const hasUnknownType = !types.length || types.some((type) => !PROMPT_INSTRUCTIONS[type]);
+  if (hasUnknownType) {
     throw new UiError("알 수 없는 프롬프트 종류입니다.");
   }
 
-  const requiresCode = ["review", "debug-progress", "complexity", "error"].includes(type);
+  const requiresCode = types.some((type) =>
+    ["review", "evaluate", "debug-progress", "complexity", "error"].includes(type)
+  );
   if (requiresCode && !data.currentCode.trim()) {
     throw new UiError(
       "현재 CodeMirror 코드를 읽지 못해 이 프롬프트를 만들 수 없습니다.",
       data.editorError || "CodeMirror 진단 정보를 확인해 주세요."
     );
   }
+
+  const instruction = types.length === 1
+    ? PROMPT_INSTRUCTIONS[types[0]].map((item) => `- ${item}`).join("\n")
+    : types.map((type) => {
+      const title = type === "review" ? "내 코드 검토" : "내 코드 평가";
+      const items = PROMPT_INSTRUCTIONS[type].map((item) => `- ${item}`).join("\n");
+      return `### ${title}\n${items}`;
+    }).join("\n\n");
 
   return [
     "다음 프로그래머스 일반 연습문제를 Python3 기준으로 도와주세요.",
@@ -332,7 +368,7 @@ function buildPrompt(type, data) {
     "==================== 실행 결과 ====================",
     promptSection("실행 결과 또는 오류 메시지", data.executionResult),
     "==================== 요청 ====================",
-    instruction.map((item) => `- ${item}`).join("\n")
+    instruction
   ].join("\n\n");
 }
 
@@ -462,27 +498,41 @@ async function runTask(task) {
   }
 }
 
+async function generatePrompt(typeOrTypes) {
+  const types = Array.isArray(typeOrTypes) ? typeOrTypes : [typeOrTypes];
+  const data = await loadCurrentInformation();
+  if (!data || !isPython3(data.language)) {
+    throw new UiError("Python3 일반 연습문제에서만 프롬프트를 만들 수 있습니다.");
+  }
+  if (types.includes("error") && !data.executionErrorDetected) {
+    throw new UiError(
+      "현재 실행 결과에서 오류나 실패를 탐지하지 못했습니다.",
+      "프로그래머스에서 코드를 실행해 오류가 표시된 뒤 현재 정보를 새로고침하세요."
+    );
+  }
+  const prompt = buildPrompt(types, data);
+  ui.preview.value = prompt;
+  ui.previewCount.textContent = `${prompt.length.toLocaleString("ko-KR")}자`;
+  ui.copyPrompt.disabled = false;
+  setStatus("프롬프트를 생성했습니다. 내용을 수정한 뒤 복사 버튼을 누르세요.", "success");
+}
+
 for (const button of ui.promptButtons) {
   button.addEventListener("click", () => {
-    runTask(async () => {
-      const data = await loadCurrentInformation();
-      if (!data || !isPython3(data.language)) {
-        throw new UiError("Python3 일반 연습문제에서만 프롬프트를 만들 수 있습니다.");
-      }
-      if (button.dataset.promptType === "error" && !data.executionErrorDetected) {
-        throw new UiError(
-          "현재 실행 결과에서 오류나 실패를 탐지하지 못했습니다.",
-          "프로그래머스에서 코드를 실행해 오류가 표시된 뒤 현재 정보를 새로고침하세요."
-        );
-      }
-      const prompt = buildPrompt(button.dataset.promptType, data);
-      ui.preview.value = prompt;
-      ui.previewCount.textContent = `${prompt.length.toLocaleString("ko-KR")}자`;
-      ui.copyPrompt.disabled = false;
-      setStatus("프롬프트를 생성했습니다. 내용을 수정한 뒤 복사 버튼을 누르세요.", "success");
-    });
+    runTask(() => generatePrompt(button.dataset.promptType));
   });
 }
+
+for (const option of ui.feedbackOptions) {
+  option.addEventListener("change", updateActionAvailability);
+}
+
+ui.generateFeedback.addEventListener("click", () => {
+  const selectedTypes = ui.feedbackOptions
+    .filter((option) => option.checked)
+    .map((option) => option.value);
+  runTask(() => generatePrompt(selectedTypes));
+});
 
 ui.preview.addEventListener("input", () => {
   ui.previewCount.textContent = `${ui.preview.value.length.toLocaleString("ko-KR")}자`;

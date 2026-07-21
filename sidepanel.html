@@ -36,8 +36,23 @@
       <section class="card" aria-labelledby="prompt-actions-title">
         <h2 id="prompt-actions-title">프롬프트 생성</h2>
         <div class="button-grid">
-          <button class="primary-button prompt-button" data-prompt-type="explain" type="button">문제 쉽게 설명</button>
-          <button class="primary-button prompt-button" data-prompt-type="review" type="button">내 코드 검토</button>
+          <fieldset class="prompt-option-group wide">
+            <legend>코드 피드백 (복수 선택 가능)</legend>
+            <div class="prompt-option-grid">
+              <label class="prompt-option">
+                <input class="feedback-option" type="checkbox" value="review" checked>
+                <span>내 코드 검토</span>
+              </label>
+              <label class="prompt-option">
+                <input class="feedback-option" type="checkbox" value="evaluate">
+                <span>내 코드 평가</span>
+              </label>
+            </div>
+            <button id="generate-feedback-button" class="primary-button full-button" type="button">
+              선택한 코드 피드백 생성
+            </button>
+          </fieldset>
+          <button class="primary-button prompt-button wide" data-prompt-type="explain" type="button">문제 쉽게 설명</button>
           <button class="primary-button prompt-button wide" data-prompt-type="debug-progress" type="button">디버깅 중간 검토</button>
           <button class="primary-button prompt-button" data-prompt-type="solution" type="button">전체 풀이 요청</button>
           <button class="primary-button prompt-button" data-prompt-type="complexity" type="button">시간복잡도 평가</button>
